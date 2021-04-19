@@ -128,18 +128,26 @@ export default {
     }
   },
   async mounted () {
-    try {
-      this.loading = true
-      const response = await axios.get('http://localhost:1337/bookings')
-      window.setTimeout(() => {
-        this.bookings = response.data
-        this.loading = false
-      }, 250)
-    } catch (error) {
-      this.error = error
-    }
+    const today = moment(new Date())
+    await this.loadData(today)
   },
   methods: {
+    async loadData (date) {
+      try {
+        this.loading = true
+
+        const weekStart = date.utc().startOf('isoWeek').format()
+        const weekEnd = date.utc().endOf('isoWeek').format()
+
+        const response = await axios.get(`http://localhost:1337/bookings?date_gte=${weekStart}&date_lte=${weekEnd}`)
+        window.setTimeout(() => {
+          this.bookings = response.data
+          this.loading = false
+        }, 250)
+      } catch (error) {
+        this.error = error
+      }
+    },
     onOpenBooking (booking) {
       this.selectedBooking = booking
       this.showModal = true
@@ -147,11 +155,13 @@ export default {
     formatDate (date, format) {
       return moment(new Date(date)).format(format)
     },
-    changeWeek (value) {
+    async changeWeek (value) {
       this.weekOffset += value
+      await this.loadData(this.selectedDate)
     },
     changeDay (value) {
       this.dayOffset += value
+      // TODO: if day has been offset by 1 week, call load data
     },
     isToday (day) {
       return moment().isSame(moment(day), 'day')
